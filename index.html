@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tell Me The Direction - Professional Edition</title>
+    <style>
+        :root {
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --indigo-600: #4f46e5;
+            --indigo-700: #4338ca;
+            --emerald-500: #10b981;
+            --rose-500: #f43f5e;
+            --amber-400: #fbbf24;
+            --gray-100: #f1f5f9;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--gray-100);
+            color: var(--slate-900);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--white);
+            min-height: 600px;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 20px;
+        }
+
+        /* Top Navigation / Stats */
+        .dashboard-header {
+            background: var(--slate-900);
+            color: var(--white);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; }
+        .stats-group { display: flex; gap: 2rem; align-items: center; }
+        .stat-item { display: flex; flex-direction: column; align-items: flex-end; }
+        .stat-label { font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }
+        .stat-value { font-size: 1.1rem; font-weight: 600; }
+
+        /* Screens */
+        .view-content {
+            flex: 1;
+            padding: 2.5rem;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .view-content.active { display: flex; }
+
+        /* Typography */
+        h1 { font-size: 2rem; color: var(--slate-900); margin-bottom: 0.5rem; }
+        .subtitle { color: #64748b; margin-bottom: 2rem; }
+
+        /* Phase 1: Grid Search */
+        .grid-wrapper {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .word-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 50px);
+            gap: 8px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background: var(--white);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cell:hover { border-color: var(--indigo-600); color: var(--indigo-600); }
+        .cell.selected { background: var(--indigo-600); color: white; border-color: var(--indigo-600); }
+        .cell.found { background: var(--emerald-500); color: white; border-color: var(--emerald-500); cursor: default; }
+
+        /* Phase 2: Map Analysis */
+        .map-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 2rem;
+        }
+
+        .building-card {
+            background: var(--white);
+            border: 2px solid #f1f5f9;
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .building-card b { display: block; font-size: 1.5rem; margin-top: 0.25rem; }
+        .pinyin-small { color: var(--indigo-600); font-size: 0.85rem; font-weight: 500; }
+
+        /* Question & Options */
+        .logic-panel {
+            width: 100%;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .sentence-prompt {
+            font-size: 1.4rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            color: var(--slate-800);
+        }
+
+        .options-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-indigo { background: var(--indigo-600); color: white; }
+        .btn-indigo:hover { background: var(--indigo-700); }
+        .btn-outline { background: white; border: 1px solid #e2e8f0; color: var(--slate-800); }
+        .btn-outline:hover { border-color: var(--indigo-600); color: var(--indigo-600); }
+
+        /* Feedback Overlay */
+        #notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            transform: translateX(200%);
+            transition: transform 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        .show-notif { transform: translateX(0) !important; }
+
+        @media (max-width: 600px) {
+            .word-grid { grid-template-columns: repeat(6, 40px); }
+            .cell { width: 40px; height: 40px; font-size: 1rem; }
+            .sentence-prompt { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- Dashboard Header -->
+        <header class="dashboard-header" id="main-header" style="display: none;">
+            <div class="brand">Tell Me The Direction</div>
+            <div class="stats-group">
+                <div class="stat-item">
+                    <span class="stat-label">Score</span>
+                    <span class="stat-value" id="score-val">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Lives</span>
+                    <span class="stat-value" id="lives-val">❤️❤️❤️</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- View 1: Welcome -->
+        <div id="welcome-view" class="view-content active">
+            <div style="font-size: 4rem; margin-bottom: 1.5rem;">🧭</div>
+            <h1>School Directions</h1>
+            <p class="subtitle">Unit 2: 我们的校园 (Interactive Training)</p>
+            <div style="text-align: left; max-width: 400px; background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                <p><strong>How to Play:</strong></p>
+                <ul style="font-size: 0.9rem; color: #475569; line-height: 1.6;">
+                    <li>Find the Chinese location name in the word grid.</li>
+                    <li>Analyze the building positions on the school map.</li>
+                    <li>Select the correct direction based on the prompt.</li>
+                </ul>
+            </div>
+            <button class="btn btn-indigo" style="padding: 1rem 3rem; font-size: 1.1rem;" onclick="initGame()">Start Session</button>
+        </div>
+
+        <!-- View 2: Word Search -->
+        <div id="search-view" class="view-content">
+            <h2 style="margin-top:0">Phase 1: Vocabulary Discovery</h2>
+            <p class="subtitle">Search for the following word: <strong id="target-display" style="color: var(--indigo-600); font-size: 1.2rem;">...</strong></p>
+            
+            <div class="grid-wrapper">
+                <div id="word-grid" class="word-grid"></div>
+            </div>
+        </div>
+
+        <!-- View 3: Logic Map -->
+        <div id="logic-view" class="view-content">
+            <h2 style="margin-top:0">Phase 2: Spatial Analysis</h2>
+            <p class="subtitle">Observe the layout of the buildings below:</p>
+            
+            <div class="map-layout" id="map-layout"></div>
+
+            <div class="logic-panel">
+                <div class="sentence-prompt" id="prompt-text"></div>
+                <div class="options-group" id="options-group"></div>
+            </div>
+        </div>
+
+        <!-- View 4: Result -->
+        <div id="result-view" class="view-content">
+            <h1>Session Complete</h1>
+            <p class="subtitle">Your overall performance:</p>
+            <div style="font-size: 4rem; font-weight: 800; color: var(--indigo-600); margin: 1rem 0;" id="final-score">0</div>
+            <div id="performance-tag" style="padding: 0.5rem 1.5rem; border-radius: 20px; background: var(--gray-100); font-weight: 600; margin-bottom: 2.5rem;"></div>
+            <button class="btn btn-indigo" onclick="location.reload()">Start New Session</button>
+        </div>
+    </div>
+
+    <div id="notification"></div>
+
+    <script>
+        const VOCAB = [
+            { hz: "球场", py: "qiúchǎng" },
+            { hz: "操场", py: "cāochǎng" },
+            { hz: "学校", py: "xuéxiào" },
+            { hz: "公园", py: "gōngyuán" },
+            { hz: "车站", py: "chēzhàn" },
+            { hz: "食堂", py: "shítáng" },
+            { hz: "课室", py: "kèshì" },
+            { hz: "篮球场", py: "lánqiú chǎng" },
+            { hz: "羽毛球场", py: "yǔmáoqiú chǎng" }
+        ];
+
+        const DIRECTIONS = [
+            { hz: "前面", py: "qiánmiàn" },
+            { hz: "后面", py: "hòumiàn" },
+            { hz: "旁边", py: "pángbiān" },
+            { hz: "对面", py: "duìmiàn" }
+        ];
+
+        let state = {
+            score: 0,
+            lives: 3,
+            currentPlace: null,
+            selectedCells: [],
+            correctDir: ""
+        };
+
+        function initGame() {
+            showView('search-view');
+            document.getElementById('main-header').style.display = 'flex';
+            startWordPhase();
+        }
+
+        function showView(viewId) {
+            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function notify(msg, type) {
+            const n = document.getElementById('notification');
+            n.innerText = msg;
+            n.style.background = type === 'success' ? 'var(--emerald-500)' : 'var(--rose-500)';
+            n.classList.add('show-notif');
+            setTimeout(() => n.classList.remove('show-notif'), 2000);
+        }
+
+        // --- WORD PHASE ---
+        function startWordPhase() {
+            state.currentPlace = VOCAB[Math.floor(Math.random() * VOCAB.length)];
+            document.getElementById('target-display').innerText = `${state.currentPlace.hz} (${state.currentPlace.py})`;
+            generateGrid();
+        }
+
+        function generateGrid() {
+            const gridEl = document.getElementById('word-grid');
+            gridEl.innerHTML = '';
+            state.selectedCells = [];
+            
+            const size = 6;
+            let cells = Array(size * size).fill('');
+            const word = state.currentPlace.hz;
+            
+            // Random placement logic
+            const isHorizontal = Math.random() > 0.5;
+            const start = isHorizontal ? 
+                Math.floor(Math.random() * (size - 1)) + (Math.floor(Math.random() * size) * size) :
+                Math.floor(Math.random() * (size * (size - 1)));
+
+            for(let i=0; i<word.length; i++) {
+                const pos = isHorizontal ? start + i : start + (i * size);
+                cells[pos] = word[i];
+            }
+
+            // Fill empty with characters from other vocab
+            const fillChars = "学校操场公园车站食堂课室对面后面".split('');
+            cells = cells.map(c => c || fillChars[Math.floor(Math.random() * fillChars.length)]);
+
+            cells.forEach((char, i) => {
+                const div = document.createElement('div');
+                div.className = 'cell';
+                div.innerText = char;
+                div.onclick = () => {
+                    if(div.classList.contains('found')) return;
+                    div.classList.toggle('selected');
+                    checkWord();
+                };
+                gridEl.appendChild(div);
+            });
+        }
+
+        function checkWord() {
+            const selected = Array.from(document.querySelectorAll('.cell.selected'));
+            const text = selected.map(s => s.innerText).join('');
+            const reversed = [...selected].reverse().map(s => s.innerText).join('');
+
+            if(text === state.currentPlace.hz || reversed === state.currentPlace.hz) {
+                selected.forEach(s => {
+                    s.classList.remove('selected');
+                    s.classList.add('found');
+                });
+                state.score += 10;
+                updateStats();
+                notify("Vocabulary Found!", "success");
+                setTimeout(startMapPhase, 1500);
+            }
+        }
+
+        // --- MAP PHASE ---
+        function startMapPhase() {
+            showView('logic-view');
+            const layout = document.getElementById('map-layout');
+            layout.innerHTML = '';
+
+            // Pick neighbors for the map grid
+            let pool = VOCAB.filter(v => v.hz !== state.currentPlace.hz).sort(() => 0.5 - Math.random());
+            let displayList = [state.currentPlace, pool[0], pool[1], pool[2]].sort(() => 0.5 - Math.random());
+
+            displayList.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'building-card';
+                card.innerHTML = `<span class="pinyin-small">${item.py}</span><b>${item.hz}</b>`;
+                layout.appendChild(card);
+            });
+
+            // Logic generation for the question
+            const p1Idx = displayList.indexOf(state.currentPlace);
+            const rules = [
+                { t: 0, f: 1, d: "旁边" }, { t: 1, f: 0, d: "旁边" },
+                { t: 2, f: 3, d: "旁边" }, { t: 3, f: 2, d: "旁边" },
+                { t: 0, f: 2, d: "前面" }, { t: 2, f: 0, d: "后面" },
+                { t: 1, f: 3, d: "前面" }, { t: 3, f: 1, d: "后面" },
+                { t: 0, f: 3, d: "对面" }, { t: 3, f: 0, d: "对面" }
+            ];
+
+            const rule = rules.find(r => r.f === p1Idx) || rules[0];
+            const target = displayList[rule.t];
+            state.correctDir = rule.d;
+
+            document.getElementById('prompt-text').innerHTML = `
+                <div style="font-size:0.9rem; color:var(--indigo-600); margin-bottom:5px;">${state.currentPlace.py} de (____) shì ${target.py}</div>
+                ${state.currentPlace.hz}的 (____) 是 ${target.hz}。
+            `;
+
+            // Options
+            const optGroup = document.getElementById('options-group');
+            optGroup.innerHTML = '';
+            DIRECTIONS.forEach(d => {
+                const b = document.createElement('button');
+                b.className = 'btn btn-outline';
+                b.innerHTML = `<span style="font-size:0.7rem; display:block; opacity:0.7;">${d.py}</span>${d.hz}`;
+                b.onclick = () => submitAnswer(d.hz);
+                optGroup.appendChild(b);
+            });
+        }
+
+        function submitAnswer(ans) {
+            if(ans === state.correctDir) {
+                state.score += 20;
+                notify("Correct Analysis!", "success");
+            } else {
+                state.lives--;
+                notify(`Incorrect. Answer: ${state.correctDir}`, "error");
+            }
+            updateStats();
+            
+            if(state.lives <= 0) {
+                setTimeout(endGame, 1000);
+            } else {
+                setTimeout(() => {
+                    showView('search-view');
+                    startWordPhase();
+                }, 1500);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('score-val').innerText = state.score;
+            let h = "";
+            for(let i=0; i<3; i++) h += (i < state.lives) ? "❤️" : "🖤";
+            document.getElementById('lives-val').innerText = h;
+        }
+
+        function endGame() {
+            showView('result-view');
+            document.getElementById('main-header').style.display = 'none';
+            document.getElementById('final-score').innerText = state.score;
+            
+            const tag = document.getElementById('performance-tag');
+            if(state.score >= 100) { tag.innerText = "EXCELLENT"; tag.style.color = "var(--emerald-500)"; }
+            else if(state.score >= 50) { tag.innerText = "GOOD"; tag.style.color = "var(--amber-400)"; }
+            else { tag.innerText = "NEED PRACTICE"; tag.style.color = "var(--rose-500)"; }
+        }
+    </script>
+</body>
+</html>
+
